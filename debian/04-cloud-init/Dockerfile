@@ -1,0 +1,5 @@
+ARG REGISTRY
+ARG IMAGE
+FROM $REGISTRY/$IMAGE
+COPY cloud-init.sh /
+ENTRYPOINT ["./cloud-init.sh"]

@@ -1,0 +1,6 @@
+ARG REGISTRY
+ARG IMAGE
+FROM $REGISTRY/$IMAGE
+COPY root-fs.sh /
+ENTRYPOINT ["./root-fs.sh"]
+

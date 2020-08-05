@@ -1,0 +1,36 @@
+version: "0.1"
+name: debian_bullseye_provisioning
+global_timeout: 6000
+tasks:
+  - name: "os-installation"
+    worker: "{{.device_1}}"
+    volumes:
+      - /dev:/dev
+      - /dev/console:/dev/console
+      - /lib/firmware:/lib/firmware:ro
+    actions:
+      - name: "disk-wipe"
+        image: bullseye/disk-wipe:latest
+        timeout: 90
+      - name: "disk-partition"
+        image: bullseye/disk-partition:latest
+        timeout: 180
+        environment:
+          MIRROR_HOST: 192.168.1.2
+        volumes:
+          - /statedir:/statedir
+      - name: "install-root-fs"
+        image: bullseye/install-root-fs:latest
+        timeout: 1200
+        environment:
+          BASEURL: "http://192.168.1.2/misc/osie/current"
+          PROXY_HOST: 192.168.1.2
+        volumes:
+          - /statedir:/statedir
+      - name: "cloud-init"
+        image: bullseye/cloud-init:latest
+        timeout: 600
+        environment:
+          MIRROR_HOST: 192.168.1.2
+        volumes:
+          - /statedir:/statedir

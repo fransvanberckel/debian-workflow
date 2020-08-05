@@ -1,0 +1,754 @@
+#!/bin/bash
+# Filename:      /etc/debootstrap/chroot-script
+# Purpose:       script executed in chroot when installing Debian via grml-debootstrap
+# Authors:       grml-team (grml.org), (c) Michael Prokop <mika@grml.org>
+# Bug-Reports:   see https://grml.org/bugs/
+# License:       This file is licensed under the GPL v2.
+################################################################################
+# GRML_CHROOT_SCRIPT_MARKER - do not remove this line unless you want to keep
+# this script as /bin/chroot-script on your new installed system
+################################################################################
+
+# error_handler {{{
+if [ "$REPORT_TRAP_ERR" = "yes" ] || [ "$FAIL_TRAP_ERR" = "yes" ]; then
+   set -E
+   set -o pipefail
+   trap "error_handler" ERR
+fi
+# }}}
+
+# shellcheck disable=SC1091
+. /etc/debootstrap/config    || exit 1
+# shellcheck disable=SC1091
+. /etc/debootstrap/variables || exit 1
+
+[ -r /proc/1 ] || mount -t proc none /proc
+[ -r /sys/kernel ] || mount -t sysfs none /sys
+
+# variable checks {{{
+
+# use aptitude only if it's available
+if [ -x /usr/bin/aptitude ] ; then
+   APTUPDATE="aptitude update $DPKG_OPTIONS"
+   # Debian ISOs do not contain signed Release files
+   if [ -n "$ISO" ] ; then
+      APTINSTALL="aptitude -y --allow-untrusted --without-recommends install $DPKG_OPTIONS"
+      APTUPGRADE="aptitude -y --allow-untrusted safe-upgrade $DPKG_OPTIONS"
+   else
+      APTINSTALL="aptitude -y --without-recommends install $DPKG_OPTIONS"
+      APTUPGRADE="aptitude -y safe-upgrade $DPKG_OPTIONS"
+   fi
+else
+   APTINSTALL="apt-get -y --no-install-recommends install $DPKG_OPTIONS"
+   APTUPDATE="apt-get update $DPKG_OPTIONS"
+   APTUPGRADE="apt-get -y upgrade $DPKG_OPTIONS"
+fi
+
+if [ -z "$STAGES" ] ; then
+   STAGES='/etc/debootstrap/stages'
+   [ -d "$STAGES" ] || mkdir -p "$STAGES"
+fi
+# }}}
+
+# helper functions {{{
+stage() {
+  if [ -n "$2" ] ; then
+     echo "$2" > "$STAGES/$1"
+     return 0
+  elif grep -q 'done' "$STAGES/$1" 2>/dev/null ; then
+     echo "   [*] Notice: stage $1 has been executed already, skipping execution therefore.">&2
+     return 1
+  fi
+  echo "   Executing stage ${1}"
+  return 0
+}
+
+askpass() {
+  # read -s emulation for dash. result is in $resp.
+  set -o noglob
+  [ -t 0 ] && stty -echo
+  read -r resp
+  [ -t 0 ] && stty echo
+  set +o noglob
+}
+# }}}
+
+# define chroot mirror {{{
+chrootmirror() {
+  if [ -n "$KEEP_SRC_LIST" ] ; then
+    echo "KEEP_SRC_LIST has been set, skipping chrootmirror stage."
+    return
+  fi
+
+  if [ -z "$COMPONENTS" ] ; then
+    COMPONENTS='main'
+  fi
+  echo "Using repository components $COMPONENTS"
+
+  if [ -n "$ISO" ] ; then
+    echo "Adjusting sources.list for ISO (${ISO})."
+    echo "deb $ISO $RELEASE $COMPONENTS" > /etc/apt/sources.list
+
+    if [ -n "$MIRROR" ] ; then
+      echo "Adding mirror entry (${MIRROR}) to sources.list."
+      echo "deb $MIRROR $RELEASE $COMPONENTS" >> /etc/apt/sources.list
+    fi
+  else
+    if [ -n "$MIRROR" ] ; then
+      echo "Adjusting sources.list for mirror (${MIRROR})."
+      echo "deb $MIRROR $RELEASE $COMPONENTS" > /etc/apt/sources.list
+    fi
+  fi
+
+  # LTS support
+  case "$RELEASE" in
+    squeeze)
+      if [ -n "$MIRROR" ] ; then
+        echo "Release matching $RELEASE - enabling LTS support in sources.list"
+        echo "deb $MIRROR ${RELEASE}-lts $COMPONENTS" >> /etc/apt/sources.list
+      fi
+      ;;
+  esac
+
+  # add security.debian.org:
+  case "$RELEASE" in
+    unstable|sid|lenny) ;;  # no security pool available
+    squeeze|wheezy|jessie|stretch|buster)
+      echo "Adding security.debian.org to sources.list."
+      echo "deb http://security.debian.org ${RELEASE}/updates $COMPONENTS" >> /etc/apt/sources.list
+      ;;
+    *)
+      # bullseye and newer releases use a different repository layout, see
+      # https://lists.debian.org/debian-devel-announce/2019/07/msg00004.html
+      echo "Adding security.debian.org/debian-security to sources.list."
+      echo "deb http://security.debian.org/debian-security ${RELEASE}-security $COMPONENTS" >> /etc/apt/sources.list
+      ;;
+  esac
+}
+# }}}
+
+# remove local chroot mirror {{{
+remove_chrootmirror() {
+  if [ -n "$KEEP_SRC_LIST" ] ; then
+    echo "KEEP_SRC_LIST has been set, skipping remove_chrootmirror stage."
+    return
+  fi
+
+  if [ -n "$ISO" ] ; then
+    echo "Removing ISO (${ISO}) from sources.list."
+    TMP_ISO="${ISO//\//\\\/}"
+    sed -i "/deb $TMP_ISO $RELEASE $COMPONENTS/ D" /etc/apt/sources.list
+  else
+    if [ -n "$MIRROR" ] && echo "$MIRROR" | grep -q 'file:' ; then
+      echo "Removing local mirror (${MIRROR}) from sources.list."
+      TMP_MIRROR="${MIRROR//\//\\\/}"
+      sed -i "/deb $TMP_MIRROR $RELEASE $COMPONENTS/ D" /etc/apt/sources.list
+      echo "Adding fallback mirror entry (${FALLBACK_MIRROR}) to sources.list instead."
+      echo "deb $FALLBACK_MIRROR $RELEASE $COMPONENTS" >> /etc/apt/sources.list
+    fi
+  fi
+}
+# }}}
+
+# set up grml repository {{{
+grmlrepos() {
+  if [ -n "$GRMLREPOS" ] ; then
+     # user might have provided their own apt sources.list
+     if ! grep -q grml /etc/apt/sources.list.d/grml.list 2>/dev/null ; then
+        cat >> /etc/apt/sources.list.d/grml.list << EOF
+# grml: stable repository:
+  deb     http://deb.grml.org/ grml-stable  main
+  deb-src http://deb.grml.org/ grml-stable  main
+
+# grml: testing/development repository:
+  deb     http://deb.grml.org/ grml-testing main
+  deb-src http://deb.grml.org/ grml-testing main
+EOF
+     fi
+
+     # shellcheck disable=SC2086
+     if apt-get update $DPKG_OPTIONS; then
+       # shellcheck disable=SC2086
+       apt-get -y --allow-unauthenticated install grml-debian-keyring $DPKG_OPTIONS
+       # shellcheck disable=SC2086
+       apt-get update $DPKG_OPTIONS
+     else
+       # make sure we have the keys available for aptitude
+       gpg --keyserver subkeys.pgp.net --recv-keys 709BCE51568573EBC160E590F61E2E7CECDEA787
+       gpg --export 709BCE51568573EBC160E590F61E2E7CECDEA787 | apt-key add - || true # not yet sure
+       # why it's necessary, sometimes we get an error even though it works [mika]
+     fi
+
+     # make sure we install packages from Grml's pool only if not available
+     # from Debian!
+     if ! grep -q grml /etc/apt/preferences 2>/dev/null ; then
+        cat >> /etc/apt/preferences << EOF
+// debian pool (default):
+Package: *
+Pin: release o=Debian
+Pin-Priority: 996
+
+// main grml-repository:
+Package: *
+Pin: origin deb.grml.org
+Pin-Priority: 991
+EOF
+     fi
+  fi
+}
+# }}}
+
+# feature to provide Debian backports repos {{{
+backportrepos() {
+  if [ -n "$BACKPORTREPOS" ] ; then
+    cat >> /etc/apt/sources.list.d/backports.list << EOF
+# debian backports: ${RELEASE}-backports repository:
+deb     ${MIRROR} ${RELEASE}-backports main
+deb-src ${MIRROR} ${RELEASE}-backports main
+EOF
+  fi
+}
+# }}}
+
+# set up kernel-img.conf {{{
+kernelimg_conf() {
+  if ! [ -r /etc/kernel-img.conf ] ; then
+     echo "Setting up /etc/kernel-img.conf"
+     cat > /etc/kernel-img.conf << EOF
+# Kernel Image management overrides
+# See kernel-img.conf(5) for details
+do_initrd = Yes
+do_symlinks = Yes
+EOF
+  fi
+}
+# }}}
+
+# make sure services do not start up {{{
+install_policy_rcd() {
+  if ! [ -r /usr/sbin/policy-rc.d ] ; then
+     export POLICYRCD=1
+     cat > /usr/sbin/policy-rc.d << EOF
+#!/bin/sh
+exit 101
+EOF
+     chmod 775 /usr/sbin/policy-rc.d
+  fi
+}
+# }}}
+
+# make sure we have an up2date system {{{
+upgrade_system() {
+  if [ "$UPGRADE_SYSTEM" = "yes" ] ; then
+    echo "Running update + upgrade"
+    $APTUPDATE
+    DEBIAN_FRONTEND=$DEBIAN_FRONTEND $APTUPGRADE
+  else
+    echo "Not running update + upgrade as \$UPDATE_AND_UPGRADE is not set to 'yes'."
+  fi
+}
+
+# }}}
+# remove now useless apt cache {{{
+remove_apt_cache() {
+  if [ "$RM_APTCACHE" = 'yes' ] ; then
+    echo "Cleaning apt cache."
+    # shellcheck disable=SC2086
+    apt-get clean $DPKG_OPTIONS
+  else
+    echo "Not cleaning apt cache as \$RM_APTCACHE is unset."
+  fi
+}
+# }}}
+
+# install additional packages {{{
+packages() {
+  # Pre-seed the debconf database with answers. Each question will be marked
+  # as seen to prevent debconf from asking the question interactively.
+  [ -f /etc/debootstrap/debconf-selections ] && {
+    echo "Preseeding the debconf database, some lines might be skipped..."
+    debconf-set-selections < /etc/debootstrap/debconf-selections
+  }
+
+  if [ "$PACKAGES" = 'yes' ] ; then
+     if ! [ -r /etc/debootstrap/packages ] ; then
+       echo "Error: /etc/debootstrap/packages (inside chroot) not found, exiting." >&2
+       exit 1
+     else
+       $APTUPDATE
+       # shellcheck disable=SC2086,SC2046
+       DEBIAN_FRONTEND=$DEBIAN_FRONTEND $APTINSTALL $(grep -v '^#' /etc/debootstrap/packages) $GRMLPACKAGES
+     fi
+  fi
+}
+# }}}
+
+# install extra packages {{{
+extrapackages() {
+    if [ "$EXTRAPACKAGES" = 'yes' ] ; then
+        PACKAGELIST=$(find /etc/debootstrap/extrapackages -type f -name '*.deb')
+        if [ -n "$PACKAGELIST" ]; then
+            # shellcheck disable=SC2086
+            dpkg -i $PACKAGELIST
+            # run apt again to resolve any deps
+            DEBIAN_FRONTEND=$DEBIAN_FRONTEND $APTINSTALL
+        fi
+    fi
+}
+# }}}
+
+# check if the specified Debian package exists
+package_exists() {
+  output=$(apt-cache show "$1" 2>/dev/null)
+  [ -n "$output" ]
+  return $?
+}
+
+
+# determine the kernel version postfix
+get_kernel_version() {
+  # do not override $KERNEL if set via config file
+  if [ -n "$KERNEL" ] ; then
+    echo "$KERNEL"
+    return 0
+  fi
+
+  local KARCH
+
+  # shellcheck disable=SC2153
+  case "$ARCH" in
+    i386)
+      case "$RELEASE" in
+        lenny|squeeze|wheezy) KARCH='686' ;;
+        # since jessie the linux-image-686 image doesn't exist any longer
+        *) KARCH='686-pae' ;;
+      esac
+      ;;
+    amd64)
+      KARCH='amd64'
+      ;;
+    *)
+      echo "Only i386 and amd64 are currently supported" >&2
+      return 1
+  esac
+
+  for KPREFIX in "" "2.6-" ; do  # iterate through the kernel prefixes,
+                                 # currently "" and "2.6-"
+    if package_exists linux-image-${KPREFIX}${KARCH} ; then
+      echo ${KPREFIX}${KARCH}
+      return 0
+    fi
+
+  done
+}
+
+# install kernel packages {{{
+kernel() {
+  if [ -n "$NOKERNEL" ] ; then
+    echo "Skipping installation of kernel packages as requested via --nokernel"
+    return 0
+  fi
+
+  $APTUPDATE
+  KVER=$(get_kernel_version)
+  if [ -n "$KVER" ] ; then
+     # note: install busybox to be able to debug initramfs
+     KERNELPACKAGES="linux-image-$KVER linux-headers-$KVER busybox firmware-linux-free"
+     # only add firmware-linux if we have non-free as a component
+     if expr "$COMPONENTS" : '.*non-free' >/dev/null ; then
+       KERNELPACKAGES="$KERNELPACKAGES firmware-linux"
+     fi
+     # shellcheck disable=SC2086
+     DEBIAN_FRONTEND=$DEBIAN_FRONTEND $APTINSTALL $KERNELPACKAGES
+  else
+     echo "Warning: Could not find a kernel for your system. Your system won't be able to boot itself!"
+  fi
+}
+# }}}
+
+# reconfigure packages {{{
+reconfigure() {
+  if [ -n "$RECONFIGURE" ] ; then
+     for package in $RECONFIGURE ; do
+         if dpkg --list "$package" >/dev/null 2>&1 | grep -q '^ii' ; then
+           DEBIAN_FRONTEND=$DEBIAN_FRONTEND dpkg-reconfigure "$package" || \
+           echo "Warning: $package does not exist, can not reconfigure it."
+         fi
+     done
+  fi
+}
+# }}}
+
+# set password of user root {{{
+passwords()
+{
+  if [ -n "$NOPASSWORD" ] ; then
+    echo "Skip setting root password as requested."
+    return 0
+  fi
+
+  echo "Activating shadow passwords."
+  shadowconfig on
+
+  CHPASSWD_OPTION=
+  if chpasswd --help 2>&1 | grep -q -- '-m,' ; then
+     CHPASSWD_OPTION='-m'
+  fi
+  if chpasswd --help 2>&1 | grep -q -- '-e,' ; then
+     CHPASSWD_OPTION='-e'
+  fi
+
+  if [ -n "$ROOTPASSWORD" ] ; then
+     echo 'root:$ROOTPASSWORD' | chpasswd $CHPASSWD_OPTION
+     export ROOTPASSWORD=''
+  else
+    a='1'
+    b='2'
+     echo "Setting password for user root:"
+     while [ "$a" != "$b" ] ; do
+       printf "Enter new UNIX password for user root: "
+       askpass
+       a="$resp"
+       unset resp
+       echo
+       printf "Retype new UNIX password for user root: "
+       askpass
+       b="$resp"
+       unset resp
+       echo
+       if [ "$a" != "$b" ] ; then
+         echo "Sorry, passwords do not match. Retry."
+         a='1'
+         b='2'
+       else
+         echo root:"$a" | chpasswd $CHPASSWD_OPTION
+         unset a
+         unset b
+       fi
+     done
+  fi
+}
+# }}}
+
+# set up /etc/hosts {{{
+hosts() {
+  if ! [ -f /etc/hosts ] ; then
+     cat > /etc/hosts << EOF
+127.0.0.1       localhost
+::1             localhost ip6-localhost ip6-loopback
+ff02::1         ip6-allnodes
+ff02::2         ip6-allrouters
+EOF
+  fi
+}
+# }}}
+
+# set default locales {{{
+default_locales() {
+  if [ -n "$DEFAULT_LOCALES" ] ; then
+    if ! [ -x /usr/sbin/update-locale ] ; then
+      echo "Warning: update-locale executable not available (no locales package installed?)"
+      echo "Ignoring request to run update-locale for $DEFAULT_LOCALES therefore"
+      return 0
+    fi
+
+    /usr/sbin/update-locale LANGUAGE="$DEFAULT_LANGUAGE" LANG="$DEFAULT_LOCALES"
+  fi
+}
+# }}}
+
+# adjust timezone {{{
+timezone() {
+  if [ -n "$TIMEZONE" ] ; then
+    echo "Adjusting /etc/localtime"
+    ln -sf "/usr/share/zoneinfo/$TIMEZONE" /etc/localtime
+
+    echo "Setting /etc/timezone to $TIMEZONE"
+    printf '%s\n' "$TIMEZONE"  > /etc/timezone
+
+  fi
+}
+# }}}
+
+# helper function for fstab() {{{
+createfstab(){
+  echo "Setting up /etc/fstab"
+  cat > /etc/fstab <<EOF
+# /etc/fstab - created by grml-debootstrap on $(date)
+# Accessible filesystems, by reference, are maintained under '/dev/disk/'.
+# See man pages fstab(5), findfs(8), mount(8) and/or blkid(8) for more info.
+#
+# After editing this file, run 'systemctl daemon-reload' to update systemd
+# units generated from this file.
+#
+EOF
+
+  if [ -n "$TARGET_UUID" ] ; then
+    echo "/dev/disk/by-uuid/${TARGET_UUID} /  auto    defaults,errors=remount-ro 0   1" >> /etc/fstab
+  else
+    echo "Warning: couldn't identify target UUID for rootfs, your /etc/fstab might be incomplete."
+  fi
+
+if [ -n "$EFI" ] ; then
+  # shellcheck disable=SC2086
+  echo "UUID=$(blkid -o value -s UUID $EFI)  /boot/efi       vfat    umask=0077      0       1" >> /etc/fstab
+fi
+
+cat >> /etc/fstab << EOF
+proc           /proc        proc    defaults                      0   0
+/dev/cdrom     /mnt/cdrom0  iso9660 ro,user,noauto                0   0
+# some other examples:
+# /dev/sda2       none         swap    sw,pri=0             0   0
+# /dev/hda1       /Grml        ext3    dev,suid,user,noauto 0  2
+# //1.2.3.4/pub   /smb/pub     cifs    user,noauto,uid=grml,gid=grml 0 0
+# linux:/pub      /beer        nfs     defaults             0  0
+# tmpfs           /tmp         tmpfs   size=300M            0  0
+# /dev/sda5       none         swap    sw                   0  0
+EOF
+}
+# }}}
+
+# generate /etc/fstab {{{
+fstab() {
+  # set up /etc/fstab if file is not present (cdebootstrap)
+  if [ ! -f /etc/fstab  ] ; then
+     createfstab
+  fi
+
+  # set up /etc/fstab if file is UNCONFIGURED (debootstrap)
+  if grep -q UNCONFIGURED /etc/fstab ; then
+     createfstab
+  fi
+}
+# }}}
+
+# set up hostname {{{
+hostname() {
+  if [ -n "$HOSTNAME" ] ; then
+     echo "Setting hostname to ${HOSTNAME}."
+     echo "$HOSTNAME" > /etc/hostname
+
+     # adjust postfix configuration
+     if [ -r /etc/postfix/main.cf ] ; then
+        # adjust hostname related options:
+        sed -i "s/grml/$HOSTNAME/g" /etc/postfix/main.cf
+
+        # listen on loopback interface only:
+        sed -i "s/^inet_interfaces = .*/inet_interfaces = loopback-only/" /etc/postfix/main.cf
+        grep -q inet_interfaces /etc/postfix/main.cf || echo 'inet_interfaces = loopback-only' >> /etc/postfix/main.cf
+     fi
+     if [ -r /etc/mailname ] ; then
+        # adjust /etc/mailname
+        local etc_mail_domain
+        etc_mail_domain=$(/bin/dnsdomainname 2>/dev/null || echo localdomain)
+        case "$HOSTNAME" in
+          *.*)
+            local mailname="$HOSTNAME"
+            ;;
+          *)
+            local mailname="${HOSTNAME}.${etc_mail_domain}"
+            ;;
+        esac
+        echo "Setting mailname to ${mailname}"
+        echo "$mailname" > /etc/mailname
+     fi
+  fi
+}
+# }}}
+
+# generate initrd/initramfs {{{
+initrd() {
+  # assume the first available kernel as our main kernel
+  # shellcheck disable=SC2012
+  KERNELIMG=$(ls -1 /boot/vmlinuz-* 2>/dev/null | head -1)
+  if [ -z "$KERNELIMG" ] ; then
+     echo 'No kernel image found, skipping initrd stuff.'>&2
+     return
+  fi
+
+  KERNELVER=${KERNELIMG#/boot/vmlinuz-}
+
+  # generate initrd
+  if [ -n "$INITRD" ] ; then
+     echo "Generating initrd."
+     update-initramfs -c -t -k "$KERNELVER"
+  fi
+}
+# }}}
+
+efi_setup() {
+  if [ -z "$EFI" ] ; then
+    return 0
+  fi
+
+  if ! dpkg --list efibootmgr 2>/dev/null | grep -q '^ii' ; then
+    echo "Notice: efi option set but no efibootmgr package, installing it therefore."
+    DEBIAN_FRONTEND=$DEBIAN_FRONTEND $APTINSTALL efibootmgr
+  fi
+
+  mkdir -p /boot/efi
+  echo "Mounting $EFI on /boot/efi"
+  mount "$EFI" /boot/efi || return 1
+
+  echo "Invoking efibootmgr"
+  efibootmgr || return 1
+}
+
+# grub configuration/installation {{{
+grub_install() {
+
+  if [ -z "$GRUB" ] ; then
+    echo "Notice: \$GRUB not defined, will not install grub inside chroot at this stage."
+    return 0
+  fi
+
+  efi_setup || return 1
+
+  if [ -n "$EFI" ] ; then
+    GRUB_PACKAGE=grub-efi-amd64
+  else
+    GRUB_PACKAGE=grub-pc
+  fi
+
+  # make sure this is pre-defined so we have sane settings for automated
+  # upgrades, see https://bugs.debian.org/cgi-bin/bugreport.cgi?bug=711019
+  echo "Setting ${GRUB_PACKAGE} debconf configuration for install device to $GRUB"
+  echo "${GRUB_PACKAGE} ${GRUB_PACKAGE}/install_devices multiselect $GRUB" | debconf-set-selections
+
+  if ! dpkg --list ${GRUB_PACKAGE} 2>/dev/null | grep -q '^ii' ; then
+    echo "Notice: grub option set but no ${GRUB_PACKAGE} package, installing it therefore."
+    DEBIAN_FRONTEND=$DEBIAN_FRONTEND $APTINSTALL ${GRUB_PACKAGE}
+  fi
+
+  if ! [ -x "$(command -v grub-install)" ] ; then
+     echo "Error: grub-install not available. (Error while installing grub package?)" >&2
+     return 1
+  fi
+
+  if [ -n "$SELECTED_PARTITIONS" ] ; then # using sw-raid
+     for device in $SELECTED_PARTITIONS ; do
+        GRUB="${device%%[0-9]}"
+        echo "Installing grub on ${GRUB}:"
+        if ! grub-install --no-floppy "$GRUB" ; then
+          echo "Error: failed to execute 'grub-install --no-floppy $GRUB'." >&2
+          exit 1
+        fi
+
+     done
+     rm -f /boot/grub/device.map
+  else
+     echo "Installing grub on ${GRUB}:"
+     case "$RELEASE" in
+       lenny|squeeze|wheezy)
+         local grub_dev
+         grub_dev="$(readlink -f "${GRUB}")"
+         if ! grub-install --no-floppy "${grub_dev}" ; then
+           echo "Error: failed to execute 'grub-install --no-floppy ${grub_dev}'." >&2
+           exit 1
+         fi
+         rm -f /boot/grub/device.map
+         ;;
+       *)
+         echo "(hd0) ${GRUB}" > /boot/grub/device.map
+         if ! grub-install "(hd0)" ; then
+           echo "Error: failed to execute 'grub-install (hd0)'." >&2
+           exit 1
+         fi
+         rm /boot/grub/device.map
+         ;;
+     esac
+  fi
+
+  echo "Adjusting grub configuration for use on ${GRUB}."
+
+  # finally install grub
+  if [ -x /usr/sbin/update-grub ] ; then
+     UPDATEGRUB='/usr/sbin/update-grub'
+  elif [ -x /sbin/update-grub ] ; then
+     UPDATEGRUB='/sbin/update-grub'
+  else
+    echo "Error: update-grub not available, can not execute it." >&2
+    return 1
+  fi
+
+  if [ -n "${BOOT_APPEND}" ] ; then
+    echo "Adding BOOT_APPEND configuration ['${BOOT_APPEND}'] to /etc/default/grub."
+    sed -i "/GRUB_CMDLINE_LINUX_DEFAULT/ s#\"\$# ${BOOT_APPEND}\"#" /etc/default/grub
+  fi
+
+  mountpoint /boot/efi &>/dev/null && umount /boot/efi
+
+  $UPDATEGRUB
+}
+# }}}
+
+# execute all scripts present in /etc/debootstrap/chroot-scripts/ {{{
+custom_scripts() {
+  [ -d /etc/debootstrap/chroot-scripts/ ] || return 0
+
+  for script in /etc/debootstrap/chroot-scripts/* ; do
+      echo "Executing script $script"
+      $script && echo "done" || echo "failed"
+  done
+}
+# }}}
+
+# make sure we don't have any running processes left {{{
+services() {
+  for service in ssh mdadm mdadm-raid ; do
+    if [ -x /etc/init.d/"$service" ] ; then
+       /etc/init.d/"$service" stop || true
+    fi
+  done
+}
+# }}}
+
+# unmount /proc and make sure nothing is left {{{
+finalize() {
+  # make sure we don't leave any sensible data
+  rm -f /etc/debootstrap/variables
+
+  [ -n "$POLICYRCD" ] && rm -f /usr/sbin/policy-rc.d
+
+  [ -r /sys/kernel ] || umount /sys >/dev/null 2>/dev/null || true
+  [ -r /proc/1 ] || umount /proc >/dev/null 2>/dev/null || true
+}
+# }}}
+
+# signal handler {{{
+signal_handler() {
+  finalize
+  [ -n "$1" ] && EXIT="$1" || EXIT="1"
+  exit "$EXIT"
+}
+# }}}
+
+# set signal handler {{{
+trap signal_handler HUP INT QUIT TERM
+# }}}
+
+# execute the functions {{{
+
+ # always execute install_policy_rcd
+ install_policy_rcd
+
+ for i in chrootmirror grmlrepos backportrepos kernelimg_conf \
+     kernel packages extrapackages reconfigure hosts \
+     default_locales timezone fstab hostname initrd grub_install passwords \
+     custom_scripts upgrade_system remove_apt_cache services \
+     remove_chrootmirror; do
+     if stage $i ; then
+       $i && stage $i 'done' || exit 1
+     fi
+  done
+  # always execute the finalize stage:
+  finalize
+# }}}
+
+# finally exit the chroot {{{
+  echo "Finished chroot installation, exiting."
+  exit 0
+# }}}
+
+## END OF FILE #################################################################
+# vim: ai tw=80 expandtab foldmethod=marker

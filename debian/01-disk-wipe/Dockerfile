@@ -1,0 +1,6 @@
+ARG REGISTRY
+ARG IMAGE
+FROM $REGISTRY/$IMAGE
+COPY wipe.sh /
+ENTRYPOINT ["./wipe.sh"]
+
