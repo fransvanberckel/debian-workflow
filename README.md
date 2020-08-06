@@ -39,7 +39,7 @@ debian-workflow/
 
 This configuration has been tested with the following hardware and OS combinations:
 
-  - HP ProBook 6560b and Ubuntu 18.04 (64-bit), used docker-compose_1.21.0-3_all.deb
+  - HP ProBook 6560b and Ubuntu 18.04 (64-bit)
   - HP ProLiant DL2000 Node Rack Server module and Debian Bullseye (64-bit)
 
 I am open for cloud instances to test, when they become available. 
