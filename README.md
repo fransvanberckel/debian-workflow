@@ -35,9 +35,9 @@ debian-workflow/
 └── README.md
 ```
 
-## Compatibility
-
 About the Tinkerbell Debian workflow it's based on Debootstrap. It doesn't try to process disk images any more. Just installing old plain deb packages. Because of the need of setup the same packages over and over again (specifically in cace of installing multiple Debian instances) the workflow has a dependency on apt-cacher-ng.
+
+## Compatibility
 
 This configuration has been tested with the following hardware and OS combinations:
 
