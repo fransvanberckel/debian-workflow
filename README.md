@@ -37,14 +37,14 @@ debian-workflow/
 
 ## Compatibility
 
-About the Tinkerbell Debian workflow it's based on Debootstrap. It doesn't try to process disk images any more. Just installing old plain Debian packages. Because of the need of setup the same packages over and over again (specifically in cace of installing multiple Debian instances) the workflow has a dependency on apt-cacher-ng.
+About the Tinkerbell Debian workflow it's based on Debootstrap. It doesn't try to process disk images any more. Just installing old plain deb packages. Because of the need of setup the same packages over and over again (specifically in cace of installing multiple Debian instances) the workflow has a dependency on apt-cacher-ng.
 
 This configuration has been tested with the following hardware and OS combinations:
 
-  - HP ProBook 6560b and Ubuntu 18.04 (64-bit)
-  - HP ProLiant DL2000 Node Rack Server module and Debian Bullseye (64-bit)
+ - HP ProBook 6560b and Ubuntu 18.04 (64-bit)
+ - HP ProLiant DL2000 Node Rack Server module and Debian Bullseye (64-bit)
 
-I am open for cloud instances to test, when they become available. 
+I am open for cloud instances to test, when they become available.
 
 ## Usage
 
@@ -57,9 +57,9 @@ First, before you start running the workers workflow, you need to make adjustmen
 - debian/build_and_push_images.sh
 - debian/create_tink_workflow.sh
 
-And install apt-cacher-ng. This workflow doesn't work without! It uses the default port 3142. And caches all the deb packages nicely.
+Install debootstrap & apt-cacher-ng. This workflow doesn't work without! It uses the default port 3142. And caches all the deb packages nicely.
 
-$ sudo apt-get install apt-cacher-ng
+$ sudo apt-get install debootstrap apt-cacher-ng
 
 ## Author
 
