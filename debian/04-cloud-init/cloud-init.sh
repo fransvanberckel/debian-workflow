@@ -19,7 +19,7 @@ echo -e "${GREEN}#### Configuring cloud-init for Packet${NC}"
 if [ -f $target/etc/cloud/cloud.cfg ]; then
 	echo "Cloud-init post-install - pushing data from database to worker"
 	mv $target/etc/cloud/cloud.cfg $target/etc/cloud/cloud.cfg.dpkg
-	printf('#cloud-config\n\n') > $target/etc/cloud/cloud.cfg;
+	echo -e '#cloud-config\n\n' > $target/etc/cloud/cloud.cfg
         # yq search for cloud_cfg, reads as json, and prosses it as pretty yaml
 	$(yq r -P $metadata "cloud_cfg" >> $target/etc/cloud/cloud.cfg)
 else
