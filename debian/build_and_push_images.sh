@@ -1,9 +1,11 @@
 #!/usr/bin/env bash
 
 if [[ $EUID -ne 0 ]]; then
-   echo "This script must be run as sudo ./create_images.sh"
+   echo "This script must be run as sudo ./build_and_push_images.sh"
    exit 1
 fi
+
+apt-get install -qq --yes --no-install-recommends whois debootstrap apt-cacher-ng 2>/dev/null
 
 registry='192.168.1.1'
 proxy_url='http://192.168.1.1:3142'
