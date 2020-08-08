@@ -34,6 +34,6 @@ else
 fi
 
 cat <<EOF >$target/etc/cloud/cloud.cfg.d/90_dpkg.cfg
-# datasource_list: [ NoCloud, AltCloud, ConfigDrive, OpenStack, CloudStack, DigitalOcean,  Ec2, MAAS, OVF, GCE, None ]
-datasource_list: [ NoCloud ]
+# datasource_list: [ NoCloud, AltCloud, ConfigDrive, OpenStack, CloudStack, DigitalOcean, Ec2, MAAS, OVF, GCE, None ]
+datasource_list: [ NoCloud, None ]
 EOF
