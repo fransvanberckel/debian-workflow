@@ -65,8 +65,9 @@ $ sudo ./pack_grml_tar_gz.sh
 $ sudo cp ./grml.tar.gz /var/tinkerbell/state/webroot/misc/osie/current/
 $ sudo ./create_tink_workflow.sh
 
-Enter new root password ...
-Enter new password salt ...
+Enter new root password:
+Enter new user password:
+Enter new password salt:
 Creating new Tinkerbell worker environment
 2020/08/07 05:56:07 Hardware data pushed successfully
 Created Template: 95f948b6-cf87-4d64-bb56-1f5087ae6588
