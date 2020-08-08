@@ -5,7 +5,7 @@ if [[ $EUID -ne 0 ]]; then
    exit 1
 fi
 
-apt-get install -qq --yes --no-install-recommends whois debootstrap apt-cacher-ng 2>/dev/null
+apt-get -qq --yes --no-install-recommends install whois debootstrap apt-cacher-ng 2>/dev/null
 
 registry='192.168.1.1'
 proxy_url='http://192.168.1.1:3142'
