@@ -20,6 +20,7 @@ export CRYPTEDROOTPASSWORD=$(printf '%s\n' "$ROOTPASSWORD" | mkpasswd --stdin --
 export CRYPTEDUSERPASSWORD=$(printf '%s\n' "$USERPASSWORD" | mkpasswd --stdin --method=sha-512 --salt "$PASSWORDSALT")
 echo "Generate $UUID.json"
 cat ./hardware.json | envsubst  > $UUID.json
+unset ROOTPASSWORD CRYPTEDROOTPASSWORD USERPASSWORD CRYPTEDUSERPASSWORD PASSWORDSALT
 
 echo "Creating new Tinkerbell worker environment"
 docker exec -i deploy_tink-cli_1 tink hardware push < ./$UUID.json
