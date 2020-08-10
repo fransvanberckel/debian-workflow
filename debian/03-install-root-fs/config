@@ -197,7 +197,6 @@ MKFS=''
 # Use /usr/share/zoneinfo/$TIMEZONE for /etc/localtime + set /etc/timezone.
 # Default: 'Europe/Vienna'
 # TIMEZONE='Europe/Vienna'
-TIMEZONE='Europe/Amsterdam'
 
 # Clean APT cache after installation is finished.
 # Default: 'yes'
