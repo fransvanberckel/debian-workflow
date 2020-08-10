@@ -7,6 +7,10 @@ fi
 
 export OS_CODENAME=bullseye
 export MAC_ADDRESS=00:1d:21:58:43:5d
+export IP_ADDRESS=192.168.1.5
+export NETMASK=255.255.255.0
+export GATEWAY=192.168.1.1
+export HOSTNAME=server001
 
 read -sp 'Enter new root password: ' ROOTPASSWORD
 printf "\n"
