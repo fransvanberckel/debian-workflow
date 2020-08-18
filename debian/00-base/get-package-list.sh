@@ -1,14 +1,12 @@
 #!/bin/bash
 
 packages=(
-        apt-utils
         curl
         dmidecode
         efibootmgr
         file
         gawk
         gdisk
-	gnupg
         grml-debootstrap
         isc-dhcp-client
         jq
