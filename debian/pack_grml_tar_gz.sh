@@ -5,7 +5,7 @@ if [[ $EUID -ne 0 ]]; then
    exit 1
 fi
 
-grmlvars="grml.tar.gz"
+grmlconfig="grml.tar.gz"
 sourcedir="03-install-root-fs"
 targetdir="temp"
 
@@ -19,7 +19,8 @@ done
 
 cd $targetdir
 chmod +x chroot-script
-tar -czvf ../$grmlvars .
+echo "Packing $grmlconfig"
+tar -czvf ../$grmlconfig .
 cd ..
 rm -R $targetdir
 
