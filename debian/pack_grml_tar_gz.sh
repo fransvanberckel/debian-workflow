@@ -5,7 +5,8 @@ if [[ $EUID -ne 0 ]]; then
    exit 1
 fi
 
-grmlconfig="grml.tar.gz"
+distro="debian"
+grmlconfig="grml-$distro.tar.gz"
 sourcedir="03-install-root-fs"
 targetdir="temp"
 

@@ -62,7 +62,7 @@ Next verify, build, pack & create the environment.
 $ ./verify_json_tweaks.sh
 $ sudo ./build_and_push_images.sh
 $ sudo ./pack_grml_tar_gz.sh
-$ sudo cp ./grml.tar.gz /var/tinkerbell/state/webroot/misc/osie/current/
+$ sudo cp ./grml-debian.tar.gz /var/tinkerbell/state/webroot/misc/osie/current/
 $ sudo ./create_tink_workflow.sh
 
 Enter new root password:

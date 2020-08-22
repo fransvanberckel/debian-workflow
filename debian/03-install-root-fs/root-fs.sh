@@ -5,11 +5,12 @@ set -o nounset
 
 ephemeral="/workflow/data.json"
 pwhash=$(jq -r .pwhash "$ephemeral")
+distro=$(jq -r .distro "$ephemeral")
 os_slug=$(jq -r .os_slug "$ephemeral")
 os_codename=$(jq -r .os_codename "$ephemeral")
 
 assetdir="/tmp/assets"
-grmlconfig="grml.tar.gz"
+grmlconfig="grml-$distro.tar.gz"
 grmldir="/etc/debootstrap"
 
 root=$(blkid -L ROOT -o device)
