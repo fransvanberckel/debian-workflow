@@ -96,12 +96,12 @@ setup_disks() {
 				esac
 				msg "label contains BIOS, setting partition type as $humantype"
 			fi
-                        if [[ $partlabel =~ "SWAP" ]]; then
-                                bootdevs+=("$disk")
-                                humantype="Linux swap"
-                                parttype=8200
-                                msg "label contains SWAP, setting partition type as $humantype"
-                        fi
+			if [[ $partlabel =~ "SWAP" ]]; then
+				bootdevs+=("$disk")
+				humantype="Linux swap"
+				parttype=8200
+				msg "label contains SWAP, setting partition type as $humantype"
+			fi
 			if [[ $partsize =~ "pct" ]]; then
 				msg "Part size contains pct. Lets do some math"
 				# all maths is done on sector basis
