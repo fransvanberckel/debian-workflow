@@ -3,14 +3,14 @@
 source functions.sh && init
 set -o nounset
 
-assetdir="/tmp/assets"
-grmlvars="grml.tar.gz"
-grmldir="/etc/debootstrap"
-
 ephemeral="/workflow/data.json"
 pwhash=$(jq -r .pwhash "$ephemeral")
 os_slug=$(jq -r .os_slug "$ephemeral")
 os_codename=$(jq -r .os_codename "$ephemeral")
+
+assetdir="/tmp/assets"
+grmlvars="grml.tar.gz"
+grmldir="/etc/debootstrap"
 
 root=$(blkid -L ROOT -o device)
 disk=$(blkid -L ROOT -o device | tr -dc 'a-z /')
