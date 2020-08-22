@@ -21,9 +21,9 @@ if ! [[ -f /statedir/disks-partioned-image-extracted ]]; then
 	wget "$BASEURL/$grmlvars" -P $assetdir
 	tar -zxpf "$assetdir/$grmlvars" -C $grmldir
 
-        echo -e "${GREEN}#### Install ${os_slug} ( ${os_codename} ) root-fs to ${root} ...${NC}"
-        export http_proxy="http://$PROXY_HOST:3142"
-        export https_proxy="http://$PROXY_HOST:3142"
-        grml-debootstrap --release $os_codename --target $root --grub $disk --password $pwhash --nointerfaces --remove-configs --force
+	echo -e "${GREEN}#### Install ${os_slug} ( ${os_codename} ) root-fs to ${root} ...${NC}"
+	export http_proxy="http://$PROXY_HOST:3142"
+	export https_proxy="http://$PROXY_HOST:3142"
+	grml-debootstrap --release $os_codename --target $root --grub $disk --password $pwhash --nointerfaces --remove-configs --force
 	echo -e "${GREEN}#### root-fs deployment completed ...${NC}"
 fi
