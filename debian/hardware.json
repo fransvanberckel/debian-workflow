@@ -105,6 +105,7 @@
     },
     "instance": {
       "crypted_root_password": "$CRYPTEDROOTPASSWORD",
+      "hostname": "$HOSTNAME",
       "operating_system_version": {
         "distro": "debian",
         "version": "11",

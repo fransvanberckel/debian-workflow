@@ -23,6 +23,7 @@ declare os_slug && set_from_metadata os_slug 'instance.operating_system_version.
 declare os_codename && set_from_metadata os_codename 'instance.operating_system_version.os_codename' <"$metadata"
 declare preserve_data="false"
 declare pwhash && set_from_metadata pwhash 'instance.crypted_root_password' <"$metadata"
+declare hostname && set_from_metadata hostname 'instance.hostname' <"$metadata"
 declare state && set_from_metadata state 'state' <"$metadata"
 
 echo "Number of drives found: ${#disks[*]}"
@@ -41,6 +42,7 @@ echo $(jq ". + {\"os_slug\": \"$os_slug\"}" <<< cat $ephemeral) > $ephemeral
 echo $(jq ". + {\"os_codename\": \"$os_codename\"}" <<< cat $ephemeral) > $ephemeral
 echo $(jq ". + {\"preserve_data\": \"$preserve_data\"}" <<< cat $ephemeral) > $ephemeral
 echo $(jq ". + {\"pwhash\": \"$pwhash\"}" <<< cat $ephemeral) > $ephemeral
+echo $(jq ". + {\"hostname\": \"$hostname\"}" <<< cat $ephemeral) > $ephemeral
 echo $(jq ". + {\"state\": \"$state\"}" <<< cat $ephemeral) > $ephemeral
 
 jq . $ephemeral
