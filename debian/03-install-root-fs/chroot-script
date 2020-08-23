@@ -392,14 +392,14 @@ passwords()
 
   CHPASSWD_OPTION=
   if chpasswd --help 2>&1 | grep -q -- '-m,' ; then
-     CHPASSWD_OPTION='-m'
+     CHPASSWD_OPTION='--md5'
   fi
   if chpasswd --help 2>&1 | grep -q -- '-e,' ; then
-     CHPASSWD_OPTION='-e'
+     CHPASSWD_OPTION='--encrypted'
   fi
 
   if [ -n "$ROOTPASSWORD" ] ; then
-     echo 'root:$ROOTPASSWORD' | chpasswd $CHPASSWD_OPTION
+     echo root:$ROOTPASSWORD | chpasswd $CHPASSWD_OPTION
      export ROOTPASSWORD=''
   else
     a='1'
