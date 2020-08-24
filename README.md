@@ -35,7 +35,7 @@ debian-workflow/
 └── README.md
 ```
 
-About the Tinkerbell Debian workflow it's based on Debootstrap. It doesn't try to process disk images any more. Just installing old plain deb packages. Because of the need to setup the same packages over and over again, (especifically in cace of installing multiple Debian instances) this workflow has a dependency on apt-cacher-ng. It doesn't work without! It uses the default port 3142. And cache all the deb packages nicely.
+About the Tinkerbell Debian workflow it's based on Grml-debootstrap. It doesn't try to process disk images any more. Just installing old plain deb packages. Because of the need to setup the same packages over and over again, (especifically in cace of installing multiple Debian instances) this workflow has a dependency on apt-cacher-ng. It doesn't work without! It uses the default port 3142. And cache all the deb packages nicely.
 
 ## Compatibility
 
