@@ -54,7 +54,6 @@ First, before you start running the workers workflow, you need to make adjustmen
 
 - debian/bullseye.yml
 - debian/hardware.json
-- debian/pack_grml_tar_gz.sh
 - debian/build_and_push_images.sh
 - debian/create_tink_workflow.sh
 
