@@ -74,6 +74,10 @@ Created Template: 95f948b6-cf87-4d64-bb56-1f5087ae6588
 Created Workflow: 508569a3-0275-4f50-b957-51d4de6c21ae
 ```
 
+## Notes
+
+* All workflow actions run as `--privileged` Docker containers.
+
 ## Author
 
 The repository was created in 2020 by [Frans van Berckel](https://www.fransvanberckel.nl)
