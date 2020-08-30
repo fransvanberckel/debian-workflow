@@ -104,6 +104,7 @@ setup_disks() {
 				parttype=8200
 				msg "label contains SWAP, setting partition type as $humantype"
 			fi
+
 			if [[ $partsize =~ "pct" ]]; then
 				msg "Part size contains pct. Lets do some math"
 				# all maths is done on sector basis
@@ -114,7 +115,7 @@ setup_disks() {
 				msg "Creating a partition $partpct% the size of disk $disk ($disksize) resulting in partition size $npartsize sectors"
 				partsize=+$npartsize
 			elif [[ $partsize == 0 ]]; then
-				msg "Partsize is zero, This means use the rest of the disk"
+				msg "Partsize is zero. This means use the rest of the disk"
 			elif [[ $partsize == null ]]; then
 				partsize=0
 				msg "Partsize is undefined, set to the default value 0 and this also means use the rest of the disk."
@@ -198,13 +199,10 @@ case $# in
 *) echo "cpr.sh called incorrectly" && exit 1 ;;
 esac
 
-target=/mnt/target
-fstab=/tmp/fstab.tmpl
-
 msg "${GREEN}#### Mounting filesystems in fstab to $target"
 sed -i 's|\(\S\)\t/|\1\t'"$target"'/|' $fstab
 while read -r mnt; do
-	#msg "$mnt"
+	msg "$mnt"
 	mkdir -p "$mnt"
 	mount --fstab "$fstab" "$mnt"
 done < <(awk '/\/mnt\// {print $2}' $fstab | sort)
