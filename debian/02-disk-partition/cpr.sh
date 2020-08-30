@@ -3,8 +3,10 @@
 source functions.sh && init
 set -o nounset
 
-#Description: This script will configure the disk partition layout, filesystem, fstab and software
-#raid config (if applicable) based upon Packet metadata.
+# Custom Partitioning & Raid (CPR)
+
+# Description: This script will configure the disk partition layout, filesystem, fstab and software
+# raid config (if applicable) based upon Packet metadata.
 
 fstab=/tmp/fstab.tmpl
 
