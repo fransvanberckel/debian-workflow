@@ -15,16 +15,13 @@ touch $metadata
 curl --connect-timeout 60 http://$MIRROR_HOST:50061/metadata > $metadata
 check_required_arg "$metadata" 'metadata file' '-M'
 
-declare class && set_from_metadata class 'facility.plan_slug' <"$metadata"
 declare deprovision_fast="false"
-declare facility && set_from_metadata facility 'facility.facility_code' <"$metadata"
 declare distro && set_from_metadata distro 'instance.operating_system_version.distro' <"$metadata"
 declare os_slug && set_from_metadata os_slug 'instance.operating_system_version.os_slug' <"$metadata"
 declare os_codename && set_from_metadata os_codename 'instance.operating_system_version.os_codename' <"$metadata"
 declare preserve_data="false"
 declare pwhash && set_from_metadata pwhash 'instance.crypted_root_password' <"$metadata"
 declare hostname && set_from_metadata hostname 'instance.hostname' <"$metadata"
-declare state && set_from_metadata state 'state' <"$metadata"
 
 echo "Number of drives found: ${#disks[*]}"
 if ((${#disks[*]} != 0)); then
@@ -34,16 +31,13 @@ fi
 ephemeral=/workflow/data.json
 echo "{}" > $ephemeral
 echo $(jq ". + {\"arch\": \"$arch\"}" <<< cat $ephemeral) > $ephemeral
-echo $(jq ". + {\"class\": \"$class\"}" <<< cat $ephemeral) > $ephemeral
 echo $(jq ". + {\"deprovision_fast\": \"$deprovision_fast\"}" <<< cat $ephemeral) > $ephemeral
-echo $(jq ". + {\"facility\": \"$facility\"}" <<< cat $ephemeral) > $ephemeral
 echo $(jq ". + {\"distro\": \"$distro\"}" <<< cat $ephemeral) > $ephemeral
 echo $(jq ". + {\"os_slug\": \"$os_slug\"}" <<< cat $ephemeral) > $ephemeral
 echo $(jq ". + {\"os_codename\": \"$os_codename\"}" <<< cat $ephemeral) > $ephemeral
 echo $(jq ". + {\"preserve_data\": \"$preserve_data\"}" <<< cat $ephemeral) > $ephemeral
 echo $(jq ". + {\"pwhash\": \"$pwhash\"}" <<< cat $ephemeral) > $ephemeral
 echo $(jq ". + {\"hostname\": \"$hostname\"}" <<< cat $ephemeral) > $ephemeral
-echo $(jq ". + {\"state\": \"$state\"}" <<< cat $ephemeral) > $ephemeral
 
 jq . $ephemeral
 
