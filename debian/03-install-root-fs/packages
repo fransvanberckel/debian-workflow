@@ -6,6 +6,7 @@ bzip2
 console-common
 cloud-init
 curl
+dbus
 dc
 dnsutils
 dosfstools
@@ -27,6 +28,7 @@ openssh-client
 openssh-server
 os-prober
 pciutils
+python3-minimal
 resolvconf
 rpcbind
 rsync
