@@ -1,0 +1,196 @@
+{
+  "id": "0eba0bf8-3772-4b4a-ab9f-6ebe93b90a94",
+  "metadata": {
+    "cloud_cfg": {
+      "apt_preserve_sources_list": "true",
+      "cloud_config_modules": [
+        "emit_upstart",
+        "ssh-import-id",
+        "locale",
+        "set-passwords",
+        "grub-dpkg",
+        "apt-pipelining",
+        "apt-configure",
+        "ntp",
+        "timezone",
+        "disable-ec2-metadata",
+        "runcmd",
+        "byobu"
+      ],
+      "cloud_final_modules": [
+        "package-update-upgrade-install",
+        "fan",
+        "puppet",
+        "chef",
+        "salt-minion",
+        "mcollective",
+        "rightscale_userdata",
+        "scripts-vendor",
+        "scripts-per-once",
+        "scripts-per-boot",
+        "scripts-per-instance",
+        "scripts-user",
+        "ssh-authkey-fingerprints",
+        "keys-to-console",
+        "phone-home",
+        "final-message",
+        "power-state-change"
+      ],
+      "cloud_init_modules": [
+        "migrator",
+        "seed_random",
+        "bootcmd",
+        "write-files",
+        "growpart",
+        "resizefs",
+        "disk_setup",
+        "mounts",
+        "set_hostname",
+        "update_hostname",
+        "update_etc_hosts",
+        "ca-certs",
+        "rsyslog",
+        "users-groups",
+        "ssh"
+      ],
+      "disable_root": "true",
+      "preserve_hostname": "false",
+      "system_info": {
+        "default_user": {
+          "gecos": "Debian",
+          "groups": [
+            "admin",
+            "users",
+            "sudo"
+          ],
+          "lock_passwd": "true",
+          "name": "debian",
+          "passwd": "test1234",
+          "shell": "/bin/bash",
+          "ssh_authorized_keys": [
+            "ssh-rsa"
+          ],
+          "ssh_pwauth": "true",
+          "sudo": [
+            "ALL=(ALL) NOPASSWD:ALL"
+          ]
+        },
+        "distro": "debian",
+        "package_mirrors": [
+          {
+            "arches": [
+              "default"
+            ],
+            "failsafe": {
+              "primary": "http://deb.debian.org/debian",
+              "security": "http://security.debian.org/"
+            }
+          }
+        ],
+        "paths": {
+          "cloud_dir": "/var/lib/cloud/",
+          "templates_dir": "/etc/cloud/templates/",
+          "upstart_dir": "/etc/init/"
+        },
+        "ssh_svcname": "ssh"
+      },
+      "users": [
+        "default"
+      ]
+    },
+    "facility": {
+      "facility_code": "onprem",
+      "plan_slug": "c2.medium.x86",
+      "plan_version_slug": ""
+    },
+    "instance": {
+      "crypted_root_password": "test1234"
+      "hostname": "server0001",
+      "operating_system_version": {
+        "distro": "debian",
+        "version": "11",
+        "os_slug": "debian_11",
+        "os_codename": "bullseye"
+      },
+      "storage": {
+        "disks": [
+          {
+            "device": "/dev/sda",
+            "partitions": [
+              {
+                "label": "BIOS",
+                "number": 1,
+                "size": 4096
+              },
+              {
+                "label": "SWAP",
+                "number": 2,
+                "size": 3993600
+              },
+              {
+                "label": "ROOT",
+                "number": 3,
+                "size": 0
+              }
+            ],
+            "wipe_table": true
+          }
+        ],
+        "filesystems": [
+          {
+            "mount": {
+              "create": {
+                "options": ["-L", "ROOT"]
+              },
+              "device": "/dev/sda3",
+              "format": "ext4",
+              "point": "/"
+            }
+          },
+          {
+            "mount": {
+              "create": {
+                "options": ["-L", "SWAP"]
+              },
+              "device": "/dev/sda2",
+              "format": "swap",
+              "point": "none"
+            }
+          }
+        ]
+      }
+    },
+    "manufacturer": {
+      "id": "",
+      "slug": ""
+    },
+    "state": "provisioning"
+  },
+  "network": {
+    "interfaces": [
+      {
+        "dhcp": {
+          "arch": "x86_64",
+          "hostname": "server0001",
+          "ip": {
+            "address": "192.168.1.5",
+            "gateway": "192.168.1.1",
+            "netmask": "255.255.255.248"
+          },
+          "lease_time": 86400,
+          "mac": "08:00:27:00:00:01",
+          "uefi": false
+        },
+        "netboot": {
+          "allow_pxe": true,
+          "allow_workflow": true,
+          "osie": {
+            "base_url": "",
+            "initrd": "",
+            "kernel": "vmlinuz-x86_64"
+          }
+        }
+      }
+    ]
+  }
+}

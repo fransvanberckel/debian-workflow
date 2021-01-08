@@ -74,8 +74,18 @@ Created Template: 95f948b6-cf87-4d64-bb56-1f5087ae6588
 Created Workflow: 508569a3-0275-4f50-b957-51d4de6c21ae
 ```
 
-## Notes
+You can also execute tink-cli without `create_tink_workflow.sh` script by individually inserting the template and hardware. You can modifiy `hw_data_hardcoded.json` as per you requirement and then create the workflow.
+```
+$ docker exec -i deploy_tink-cli_1 tink template create --name bullseye < ./bullseye.yml
+Created Template:  7e8b59b5-4ce2-448a-a4a8-1aa5db7dd519
+$ docker exec -i deploy_tink_cli_1 tink hardware push < ./hw_data_hardcoded.json
+$ docker exec -i deploy_tink-cli_1 tink workflow create \
+    -t 7e8b59b5-4ce2-448a-a4a8-1aa5db7dd519  \
+    -r '{"device_1":"08:00:27:00:00:01"}'
+```
 
+## Notes
+* Vagrant users: To boot to Debian after workflow is completed, reboot the machine, go to the boot menu and select Debian boot loader.
 * All workflow actions run as `--privileged` Docker containers.
 
 ## Author
